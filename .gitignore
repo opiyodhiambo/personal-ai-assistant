@@ -1,0 +1,15 @@
+# Virtual environment
+ai-assistant/
+
+# Django/misc
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
