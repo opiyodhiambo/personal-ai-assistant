@@ -4,8 +4,8 @@ from apps.chat.config import WhatsAppConfig
 
 
 class WhatsAppClient:
-    def __init__(self, config: WhatsAppConfig):
-        self.config = config
+    def __init__(self):
+        self.config = WhatsAppConfig()
         self.headers = {
             'Authorization': f'Bearer {self.config.access_token}',
             'Content-Type': 'application/json',
@@ -23,7 +23,7 @@ class WhatsAppClient:
         return response.json()
     
 
-    def log_http_response(response):
+    def log_http_response(self, response):
         logging.info(f"Status: {response.status_code}")
         logging.info(f"Content-type: {response.headers.get('content-type')}")
         logging.info(f"Body: {response.text}")
