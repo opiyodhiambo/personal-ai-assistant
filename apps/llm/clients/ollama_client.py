@@ -1,16 +1,14 @@
 from ollama import chat
 
-def test_chat():
-  
-    stream = chat(
-        model='llama3.2',
-        messages=[{'role': 'user', 'content': 'Why is the sky blue?'}],
-        stream=True,
-    )
+class OllamaClient:
+    def __init__(self, model='llama3'):
+        self.model = model
 
-    for chunk in stream:
-        print(chunk['message']['content'], end='', flush=True)
+    
+    def ask(self, prompt):
+        response = chat(
+            model=self.model,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
 
-
-if __name__ == "__main__":
-    test_chat()
+        return response['message']['content']

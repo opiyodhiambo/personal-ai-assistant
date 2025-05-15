@@ -1,0 +1,40 @@
+{
+    "object": "whatsapp_business_account",
+    "entry": [
+      {
+        "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+        "changes": [
+          {
+            "value": {
+              "messaging_product": "whatsapp",
+              "metadata": {
+                "display_phone_number": "1234567890",
+                "phone_number_id": "9876543210"
+              },
+              "contacts": [
+                {
+                  "profile": {
+                    "name": "John Doe"
+                  },
+                  "wa_id": "254712345678"
+                }
+              ],
+              "messages": [
+                {
+                  "from": "254712345678",
+                  "id": "wamid.HBgLMjU0NzEyMzQ1Njc4FQIAEhgUMTY5NzY3NzMzNzY1NzIzMDg5OA==",
+                  "timestamp": "1697677337",
+                  "text": {
+                    "body": "Hello, bot!"
+                  },
+                  "type": "text"
+                }
+              ]
+            },
+            "field": "messages"
+          }
+        ]
+      }
+    ]
+  }
+  
