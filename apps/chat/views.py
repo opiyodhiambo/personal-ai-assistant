@@ -35,12 +35,14 @@ class WhatsAppWebhookView(APIView):
             # ask our LLM
             start_time = datetime.now()
             print(f"start_time {start_time}")
+
             full_reply = self.ollama.ask(prompt)
             end_time = datetime.now()
             print(f"\n{full_reply}\nPrompt ended at {end_time}")
 
             duration = (end_time - start_time).total_seconds()
             print(f"This prompt took {duration} seconds")
+            
             self.whatsapp.send_message(to=sender, text=full_reply)
             return Response({"status": "sent"}, status=status.HTTP_200_OK)
         except Exception as e:
