@@ -1,10 +1,33 @@
+from jinja2  import Environment, FileSystemLoader, TemplateNotFound
 from apps.llm.models import UserIntent
 
 
 class PromptOptimizer:
-    def __init__(self, template_dir: str = "templates", template_name: str = "personal_assistant_prompt.j2"):
+    def __init__(self, template_dir: str = "prompts"):
         self.env = Environment(loader=FileSystemLoader(template_dir))
-        self.template = self.env.get_template(template_name)
+        # Mapping of user intents to corresponding template filenames
+        self.template_map = {
+            UserIntent.CREATE_EVENT: "create_event_prompt.j2",
+            UserIntent.QUERY_CALENDAR: "query_calendar_prompt.j2",
+            UserIntent.GENERAL: "general_prompt.j2"
+        }
+
 
     def build(self, user_query, context, user_intent: UserIntent):
-        pass
+        """
+        Renders the appropriate prompt template ysing the user query, context and intent
+        """
+        template_name = self.template_map.get(user_intent)
+
+        if not template_name:
+            raise ValueError(f"No template defined for intent: {user_intent}")
+        
+        try:
+            template = self.env.get_template(template_name)
+        except TemplateNotFound:
+            raise FileNotFoundError(f"Template '{template_name}' not found in '{self.env.loader.searchpath}'")
+
+        return template.render({
+            "user_input": user_query.strip(),
+            "context": context.strip() if context else "No relevant context found"
+        })
