@@ -58,7 +58,10 @@ class IntentDetector:
             content = response['message']['content'].strip()
             event_dict = json.loads(content)  # Parse LLM output as JSON
 
-            # I trust the LLM has returned all required fields and use Pydantic for validation
+            for field in ["summary", "start_time", "end_time"]:
+                if field not in event_dict:
+                    raise ValueError(f"Missing required field: '{field}' in model response.")
+                
             return EventCreate(**event_dict)
         except Exception as e:
             print(f"[IntentDetector] Event extraction failed: {e}")
