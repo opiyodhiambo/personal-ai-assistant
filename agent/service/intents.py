@@ -1,12 +1,129 @@
-from agent.models import UserIntent
+import json
+from typing import Tuple
+import ollama
+from jinja2 import Environment, FileSystemLoader
+from agent.models import EventCreate, UserIntent
+
 
 class IntentDetector:
-    def __init__(self):
-        pass
+    """
+    Detects user intent from natural language queries and extracts structured data
+    to support calendar event creation and retrieval.
+
+    - Uses simple rule-based logic as a fast first-pass classifier.
+    - Falls back to an LLM (via Ollama) for ambiguous or low-confidence cases.
+    - Also supports structured event extraction using a Jinja2-driven prompt.
+    """
+
+    def __init__(self, threshold: float = 0.7, template_dir: str = "../prompt_engineering/prompts"):
+        self.threshhold = threshold
+        self.jinja_env = Environment(loader=FileSystemLoader(template_dir))
+        self.classification_model = "llama3.2"  # Ollama model to use
+
 
     def classify(self, user_query: str) -> UserIntent:
-        pass
+        """
+        Classifies the intent of a user query (e.g. create event, check calendar).
+        Uses rule-based classification first, then falls back to LLM if confidence is low.
+        """
+        intent, confidence = self.__rule_based_classify(user_query)
+
+        if confidence >= self.threshhold:
+            return intent
+        return self._llm_fallback_classify(user_query)
 
 
-    def extract_event(user_query):
-        pass
+    def extract_event(self, user_query: str) -> EventCreate:
+        """
+        Extracts structured event information from the user's natural language query
+        using a prompt template and Ollama for LLM-based parsing.
+
+        Returns:
+            EventCreate: a structured Pydantic model instance containing event details.
+
+        Raises:
+            ValueError: if the LLM response is not a valid JSON or can't be parsed.
+        """
+        # I'm using a dedicated prompt (`event_extraction_prompt.j2`) for this,
+        # but temporarily re-using the "intent_prompt.j2" is likely a mistake.
+        prompt_template = self.jinja_env.get_template("event_extraction_prompt.j2")
+        prompt = prompt_template.render(query=user_query)
+
+        try:
+            response = ollama.chat(
+                model=self.classification_model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0}  # Setting temperature to 0 for deterministic output
+            )
+            content = response['message']['content'].strip()
+            event_dict = json.loads(content)  # Parse LLM output as JSON
+
+            # I trust the LLM has returned all required fields and use Pydantic for validation
+            return EventCreate(**event_dict)
+        except Exception as e:
+            print(f"[IntentDetector] Event extraction failed: {e}")
+            raise ValueError("Could not extract event data")
+
+
+    def __rule_based_classify(self, user_query: str) -> Tuple[UserIntent, float]:
+        """
+        A quick keyword-based heuristic classifier for common calendar intents.
+        It outputs a confidence score to guide fallback decisions.
+
+        Returns:
+            Tuple[UserIntent, float]: Best-guess intent and associated confidence
+        """
+        query = user_query.lower()
+
+        scores = {
+            UserIntent.CREATE_EVENT: 0,
+            UserIntent.QUERY_CALENDAR: 0
+        }
+
+        # Simple heuristic: If query contains scheduling-related keywords
+        if any(kw in query for kw in ["schedule", "create", "book"]):
+            scores[UserIntent.CREATE_EVENT] += 0.7
+        if "meeting" in query:
+            scores[UserIntent.CREATE_EVENT] += 0.2
+
+        if any(kw in query for kw in ["what's on", "do i have", "upcoming", "schedule"]):
+            scores[UserIntent.QUERY_CALENDAR] += 0.7
+
+        if any(kw not in query for kw in ["schedule", "create", "book", "what's on", "do i have", "upcoming", "schedule", "meeting"]):
+            scores[UserIntent.GENERAL] += 0.8
+
+        # Choose the intent with the highest score
+        best_intent = max(scores, key=scores.get)
+        best_score = scores[best_intent]
+
+        if best_score == 0:
+            return UserIntent.GENERAL, 0.0
+
+        return best_intent, best_score
+
+
+    def _llm_fallback_classify(self, user_query: str) -> UserIntent:
+        """
+        Uses an LLM (via Ollama) to classify intent when rule-based confidence is low.
+        This relies on a well-crafted prompt template for consistent labels.
+        """
+        prompt_template = self.jinja_env.get_template("intent_prompt.j2")
+        prompt = prompt_template.render(query=user_query)
+
+        try:
+            response = ollama.chat(
+                model=self.classification_model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0}
+            )
+            label = response['message']['content'].strip().lower()
+
+            # Mapping the raw label to our enum type
+            mapping = {
+                "create_event": UserIntent.CREATE_EVENT,
+                "check_calendar": UserIntent.QUERY_CALENDAR
+            }
+            return mapping.get(label, UserIntent.GENERAL)
+        except Exception as e:
+            print(f"[IntentDetector] Ollama error: {e}")
+            return UserIntent.GENERAL

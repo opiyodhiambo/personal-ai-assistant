@@ -29,6 +29,7 @@ class EventSummary(BaseModel):
     location: Optional[str] = None
     html_link: Optional[str] = None
 
+
 class UpcomingEventsResponse(BaseModel):
     events: list[EventSummary]
 
