@@ -37,8 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "apps.llm",
-    "apps.chat",
+    "agent",
+    "chat",
     "rest_framework",
 ]
 
@@ -69,7 +69,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "whatsapp_ai_assistant.wsgi.application"
+WSGI_APPLICATION = "ai_assistant.wsgi.application"
 
 
 # Database

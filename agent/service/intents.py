@@ -1,4 +1,4 @@
-from apps.llm.models import UserIntent
+from agent.models import UserIntent
 
 class IntentDetector:
     def __init__(self):

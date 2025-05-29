@@ -1,5 +1,5 @@
 from jinja2  import Environment, FileSystemLoader, TemplateNotFound
-from apps.llm.models import UserIntent
+from agent.models import UserIntent
 
 
 class PromptOptimizer:
