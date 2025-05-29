@@ -1,9 +1,9 @@
 from langchain_ollama import ChatOllama
-from apps.llm.clients.google_calendar import GoogleCalendar
-from apps.llm.embedding.embedder import EmbeddingModel
-from apps.llm.models import UserIntent
-from apps.llm.prompt_engineering.prompt_optimizer import PromptOptimizer
-from apps.llm.service.intents import IntentDetector
+from agent.service.calendar import GoogleCalendar
+from agent.embedding.embedder import EmbeddingModel
+from agent.models import UserIntent
+from agent.prompt_engineering.prompt_optimizer import PromptOptimizer
+from agent.service.intents import IntentDetector
 from langchain.memory import ConversationSummaryMemory
 from langchain.chains.conversation.base import ConversationChain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -79,10 +79,10 @@ class QueryPipeline:
             return "⚠️ I couldn't understand when to schedule the event. Please specify a clear time."
 
         # Push the event to Google Calendar
-        self.calendar.add_event(event_data)
+        added_event = self.calendar.add_event(event_data)
 
         # Let the LLM generate a confirmation or summary
-        return await self.call_llm(user_query, context=event_data, user_intent=UserIntent.CREATE_EVENT, stream=stream)
+        return await self.call_llm(user_query, context=added_event, user_intent=UserIntent.CREATE_EVENT, stream=stream)
 
 
     async def _handle_calendar_query(self, user_query: str, stream: bool = False):

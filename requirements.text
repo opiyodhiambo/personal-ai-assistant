@@ -7,3 +7,5 @@ langchain-mongodb==0.6.2
 pymongo==4.13.0 
 langchain-ollama==0.3.3
 Jinja2
+google-api-python-client==2.170.0 
+google-auth-oauthlib==1.2.2 
