@@ -2,6 +2,7 @@ import json
 from typing import Tuple
 import ollama
 from jinja2 import Environment, FileSystemLoader
+from pydantic import ValidationError
 from agent.models import EventCreate, UserIntent
 
 
@@ -63,6 +64,13 @@ class IntentDetector:
                     raise ValueError(f"Missing required field: '{field}' in model response.")
                 
             return EventCreate(**event_dict)
+        
+        except json.JSONDecodeError:
+            print(f"[IntentDetector] Failed to parse JSON: {content}")
+            raise ValueError("LLM did not return valid JSON.")
+        except ValidationError as ve:
+            print(f"[IntentDetector] Validation error: {ve}")
+            raise ValueError("Response JSON does not match expected EventCreate structure.")
         except Exception as e:
             print(f"[IntentDetector] Event extraction failed: {e}")
             raise ValueError("Could not extract event data")

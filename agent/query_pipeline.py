@@ -2,8 +2,8 @@ from langchain_ollama import ChatOllama
 from agent.service.calendar import GoogleCalendar
 from agent.embedding.embedder import EmbeddingModel
 from agent.models import UserIntent
-from agent.prompt_engineering.prompt_optimizer import PromptOptimizer
 from agent.service.intents import IntentDetector
+from agent.prompt_engineering.prompt_optimizer import PromptOptimizer
 from langchain.memory import ConversationSummaryMemory
 from langchain.chains.conversation.base import ConversationChain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder

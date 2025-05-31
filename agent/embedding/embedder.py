@@ -5,7 +5,6 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.vectorstores.atlas import AtlasDB
 from pymongo import MongoClient
-from apps.llm.clients.mongo_atlas_client import MongoAtlasClient
 
 
 class EmbeddingModel:
