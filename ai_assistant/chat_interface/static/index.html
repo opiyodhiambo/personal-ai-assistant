@@ -5,156 +5,539 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Chat Assistant</title>
   <style>
+    :root {
+      --primary: #10a37f;
+      --primary-hover: #0d8a6d;
+      --bg-color: #ffffff;
+      --sidebar-bg: #f7f7f8;
+      --text-primary: #343541;
+      --text-secondary: #6e6e80;
+      --border-color: #d9d9e3;
+    }
+
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      background: var(--sidebar-bg);
+      color: var(--text-primary);
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border-color);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.3s ease;
+      position: absolute;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .sidebar-hidden {
+      transform: translateX(-100%);
+    }
+
+    .sidebar-toggle {
+      position: absolute;
+      left: 260px;
+      top: 1rem;
+      background: var(--sidebar-bg);
+      border: 1px solid var(--border-color);
+      border-left: none;
+      border-radius: 0 0.375rem 0.375rem 0;
+      padding: 0.5rem;
+      cursor: pointer;
+      z-index: 5;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar-hidden + .sidebar-toggle {
+      left: 0;
+    }
+
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      margin: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .new-chat-btn:hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .new-chat-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
       display: flex;
       flex-direction: column;
       height: 100vh;
-      background: #f3f4f6;
+      margin-left: 260px;
+      transition: margin-left 0.3s ease;
     }
 
-    header {
-      background: #1f2937;
-      color: white;
-      padding: 1rem 2rem;
-      text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    .sidebar-hidden ~ .main-content {
+      margin-left: 0;
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-
-    #chat-box {
+    /* Chat Area */
+    #chat-container {
       flex: 1;
-      padding: 1rem;
       overflow-y: auto;
-      background: #e5e7eb;
-      display: flex;
-      flex-direction: column;
+      padding: 1rem 1rem 0;
+      background: var(--bg-color);
     }
 
-    .message {
-      max-width: 75%;
+    .message-container {
+      max-width: 800px;
+      margin: 0 auto 1.5rem;
+      padding: 0 0 1.5rem;
+    }
+
+    .message-bubble {
+      max-width: 85%;
       padding: 0.75rem 1rem;
-      margin: 0.25rem 0;
-      border-radius: 1rem;
-      line-height: 1.4;
-      white-space: pre-wrap;
+      border-radius: 0.75rem;
+      line-height: 1.5;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .message-content h1,
+    .message-content h2,
+    .message-content h3 {
+      margin: 0.5rem 0;
     }
 
-    .user {
-      align-self: flex-end;
-      background-color: #3b82f6;
+    .message-content ul {
+      padding-left: 1.2rem;
+      margin: 0.5rem 0;
+    }
+
+    .message-content li {
+      margin-bottom: 0.3rem;
+    }
+
+    .message-content p {
+      margin: 0.5rem 0;
+    }
+
+
+    .user-message {
+      background: var(--primary);
       color: white;
-      border-bottom-right-radius: 0;
+      margin-left: auto;
+      border-bottom-right-radius: 0.25rem;
     }
 
-    .bot {
-      align-self: flex-start;
-      background-color: #10b981;
-      color: white;
-      border-bottom-left-radius: 0;
+    .bot-message {
+      background: var(--sidebar-bg);
+      margin-right: auto;
+      border-bottom-left-radius: 0.25rem;
     }
 
-    #input-box {
-      display: flex;
-      border-top: 1px solid #d1d5db;
-      background: white;
-      padding: 0.5rem;
+    /* Prompt Suggestions */
+    .prompt-suggestions-container {
+      max-width: 800px;
+      margin: 0 auto;
     }
 
-    input {
-      flex: 1;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      border: 1px solid #d1d5db;
-      border-radius: 1rem;
-      outline: none;
-      margin-right: 0.5rem;
+    .prompt-suggestions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin: 2rem 0;
     }
 
-    button {
-      background: #3b82f6;
-      border: none;
-      border-radius: 50%;
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .suggestion-card {
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
       cursor: pointer;
-      transition: background 0.2s ease-in-out;
+      transition: all 0.2s;
     }
 
-    button:hover {
-      background: #2563eb;
+    .suggestion-card:hover {
+      background: rgba(0,0,0,0.03);
     }
 
-    button svg {
-      fill: white;
+    .suggestion-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .suggestion-desc {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    /* Input Area */
+    #input-container {
+      padding: 1rem;
+      background: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .input-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    #message-input {
+      width: 100%;
+      padding: 1rem 3rem 1rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      outline: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    #send-button {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--primary);
+    }
+
+    #send-button:hover {
+      color: var(--primary-hover);
+    }
+
+    #send-button svg {
       width: 20px;
       height: 20px;
     }
+
+    /* Settings Button */
+    .settings-button {
+      position: absolute;
+      right: 1rem;
+      bottom: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .settings-button:hover {
+      color: var(--primary);
+    }
+
+    .settings-button svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Welcome Screen */
+    .welcome-screen {
+      text-align: center;
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+
+    .welcome-title {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .welcome-subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    /* Settings Modal */
+    .settings-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .settings-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      width: 80%;
+      max-width: 600px;
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .close-settings {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      transform: translateX(-100%);
+      width: 220px;
+    }
+
+    .sidebar-toggle {
+      left: 0;
+    }
+
+    .main-content {
+      margin-left: 0;
+    }
+
+    .prompt-suggestions {
+      grid-template-columns: 1fr;
+    }
+
+    .input-wrapper {
+      padding: 0 0.5rem;
+    }
+
+    #message-input {
+      font-size: 0.95rem;
+    }
+
+    .settings-button {
+      right: 0.5rem;
+      bottom: 1rem;
+    }
+
+    .settings-content {
+      width: 90%;
+      padding: 1rem;
+    }
+  }
+
   </style>
 </head>
 <body>
-  <header>
-    <h1>🤖 Welcome to Your AI Assistant</h1>
-    <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">Ask me anything or get help instantly</p>
-  </header>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <button class="new-chat-btn">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 4v16m8-8H4" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        New chat
+      </button>
+    </div>
 
-  <div id="chat-box"></div>
-
-  <div id="input-box">
-    <input type="text" id="message-input" placeholder="Type your message..." />
-    <button onclick="sendMessage()" title="Send message">
-      <svg viewBox="0 0 24 24">
-        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+        <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div id="chat-container">
+        <!-- Welcome Screen -->
+        <div class="welcome-screen">
+          <h1 class="welcome-title">How can I help you today?</h1>
+          <p class="welcome-subtitle">Get instant answers, creative inspiration, and business solutions</p>
+          
+          <!-- Prompt Suggestions -->
+          <div class="prompt-suggestions">
+            <div class="suggestion-card" onclick="useSuggestion('Create a detailed customer persona for our target market')">
+              <div class="suggestion-title">Customer Persona</div>
+              <div class="suggestion-desc">Create a detailed customer persona for our target market</div>
+            </div>
+            
+            <div class="suggestion-card" onclick="useSuggestion('Propose strategies to reduce customer churn rate by 20%')">
+              <div class="suggestion-title">Churn Reduction</div>
+              <div class="suggestion-desc">Propose strategies to reduce customer churn rate by 20%</div>
+            </div>
+            
+            <div class="suggestion-card" onclick="useSuggestion('Analyze and prioritize our product backlog for the next quarter')">
+              <div class="suggestion-title">Feature Prioritization</div>
+              <div class="suggestion-desc">Analyze and prioritize our product backlog for the next quarter</div>
+            </div>
+            
+            <div class="suggestion-card" onclick="useSuggestion('Compare our product features with top 3 competitors')">
+              <div class="suggestion-title">Competitor Analysis</div>
+              <div class="suggestion-desc">Compare our product features with top 3 competitors</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div id="input-container">
+        <div class="input-wrapper">
+          <textarea id="message-input" placeholder="Message AI Assistant..." rows="1"></textarea>
+          <button id="send-button" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+            </svg>
+          </button>
+        </div>
+        <button class="settings-button" id="settingsButton">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+      <div class="settings-content">
+        <div class="settings-header">
+          <h2>Settings</h2>
+          <button class="close-settings" id="closeSettings">&times;</button>
+        </div>
+        <p>Settings content goes here...</p>
+      </div>
+    </div>
   </div>
 
   <script>
-    const chatBox = document.getElementById('chat-box');
-    const input = document.getElementById('message-input');
+    // DOM Elements
+    const chatContainer = document.getElementById('chat-container');
+    const messageInput = document.getElementById('message-input');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const settingsButton = document.getElementById('settingsButton');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettings = document.getElementById('closeSettings');
 
+    // WebSocket connection
     const ws = new WebSocket(`ws://${window.location.host}/ws`);
-
     let currentBotMessage = null;
 
-    ws.onmessage = function (event) {
-      // If there's no active bot message container, create one
-      if (!currentBotMessage) {
-        currentBotMessage = document.createElement('div');
-        currentBotMessage.className = 'message bot';
-        chatBox.appendChild(currentBotMessage);
+    // Toggle sidebar
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('sidebar-hidden');
+    });
+
+    // Settings modal
+    settingsButton.addEventListener('click', () => {
+      settingsModal.style.display = 'flex';
+    });
+
+    closeSettings.addEventListener('click', () => {
+      settingsModal.style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.style.display = 'none';
       }
+    });
 
-      // Append the new chunk to the current bot message text
-      currentBotMessage.textContent += event.data;
+    // Add message to chat
+    function addMessage(role, content, isStreaming = false) {
+      if (role === 'bot' && isStreaming && currentBotMessage) {
+        // Append to existing bot message
+        currentBotMessage.querySelector('.message-content').textContent += content;
+      } else {
+        // Create new message
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        
+        const messageBubble = document.createElement('div');
+        messageBubble.className = `message-bubble ${role}-message`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        if (role === 'bot') {
+          contentDiv.innerHTML = marked.parse(content);
+        } else {
+          contentDiv.textContent = content;
+        }
 
-      // Scroll chat to bottom
-      chatBox.scrollTop = chatBox.scrollHeight;
-    };
-
-    function sendMessage() {
-      const text = input.value.trim();
-      if (!text) return;
-
-      const msg = document.createElement('div');
-      msg.className = 'message user';
-      msg.textContent = text;
-      chatBox.appendChild(msg);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      ws.send(text);
-      input.value = '';
+        
+        messageBubble.appendChild(contentDiv);
+        messageContainer.appendChild(messageBubble);
+        chatContainer.appendChild(messageContainer);
+        
+        if (role === 'bot') {
+          currentBotMessage = messageContainer;
+        } else {
+          currentBotMessage = null;
+        }
+      }
+      
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    input.addEventListener('keypress', (e) => {
+    // Use suggestion
+    function useSuggestion(text) {
+      messageInput.value = text;
+      messageInput.focus();
+    }
+
+    // Send message
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      
+      addMessage('user', text);
+      ws.send(text);
+      messageInput.value = '';
+    }
+
+    // Handle WebSocket messages
+    ws.onmessage = function(event) {
+      // Check if this is the start of a new message
+      if (!currentBotMessage) {
+        addMessage('bot', event.data, true);
+      } else {
+        addMessage('bot', event.data, true);
+      }
+    };
+    
+    // Auto expand
+    const textarea = document.getElementById('message-input');
+
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    });
+
+
+    // Send on Enter
+    messageInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         sendMessage();
       }

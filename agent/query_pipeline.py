@@ -55,12 +55,12 @@ class QueryPipeline:
         
         # Route the query to the appropriate handler based on detected intent
         if user_intent == UserIntent.CREATE_EVENT:
-            result = await self._handle_create_event(user_query=user_query, user_intent=user_intent, session_id=session_id)
-            yield result
+            async for chunk in self._handle_create_event(user_query=user_query, user_intent=user_intent, session_id=session_id):
+                yield chunk
 
         elif user_intent == UserIntent.QUERY_CALENDAR:
-            result = await self._handle_calendar_query(user_query=user_query, user_intent=user_intent, session_id=session_id)
-            yield result
+            async for chunk in self._handle_calendar_query(user_query=user_query, user_intent=user_intent, session_id=session_id):
+                yield chunk
 
         elif user_intent == UserIntent.GENERAL:
             async for chunk in self._handle_general_query(user_query=user_query, user_intent=user_intent, session_id=session_id):
@@ -76,21 +76,25 @@ class QueryPipeline:
 
         # We verify whether the model could extract a start_time.
         if not event_data.get("start_time"):
-            return "⚠️ I couldn't understand when to schedule the event. Please specify a clear time."
+            yield "⚠️ I couldn't understand when to schedule the event. Please specify a clear time."
 
         # Push the event to Google Calendar
         added_event = self.calendar.add_event(event_data)
 
         # Let the LLM generate a confirmation or summary
-        return await self.call_llm(user_query, context=added_event, user_intent=user_intent, session_id=session_id)
+        async for chunk in self.stream_llm(user_query, context=added_event, user_intent=user_intent, session_id=session_id):
+            yield chunk
 
 
     async def _handle_calendar_query(self, user_query: str, session_id: str, user_intent: UserIntent):
         """
         Fetches upcoming events from the calendar and provides them to the LLM for summarization.
         """
-        events = self.calendar.get_upcoming_events()
-        return await self.call_llm(user_query, context=events, user_intent=user_intent, session_id=session_id)
+        events_response = self.calendar.get_upcoming_events()
+        events = [event.model_dump() for event in events_response.events]
+        print(f"events_response {events}")
+        async for chunk in self.stream_llm(user_query, context=events, user_intent=user_intent, session_id=session_id):
+            yield chunk
 
 
     async def _handle_general_query(self, user_query: str, session_id: str, user_intent: UserIntent):
@@ -104,7 +108,6 @@ class QueryPipeline:
         
     # For normal use (no streaming)
     async def call_llm(self, user_query: str, context: str, session_id: str, user_intent: UserIntent):
-
         """
         Sends the processed query to the LLM. Memory-aware behavior is handled automatically
         via RunnableWithMessageHistory and ConversationSummaryMemory.
@@ -130,7 +133,6 @@ class QueryPipeline:
             yield chunk.content
 
 
-
     def _get_memory(self, session_id: str) -> BaseChatMessageHistory:
         """
         Returns a memory object for the session. If one doesn't exist yet, it creates it.
@@ -139,3 +141,6 @@ class QueryPipeline:
         if session_id not in self.memory_store:
             self.memory_store[session_id] = ChatMessageHistory()
         return self.memory_store[session_id]
+    
+
+

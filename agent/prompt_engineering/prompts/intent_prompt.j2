@@ -1,5 +1,41 @@
-Classify the intent of this query:
+Classify the intent of this user query by selecting exactly one label from these options:
+- create_event
+- check_calendar 
+- general
+
+Consider these examples:
+
+create_event examples:
+"Schedule a meeting with John tomorrow at 2pm"
+"Create an event for my birthday on August 15th"
+"Add a dentist appointment next Tuesday at 3:30pm"
+"Set up a team sync every Friday at 9am"
+"Block my calendar for vacation from June 20-25"
+"Remind me to call mom this evening at 7pm"
+"Book a conference room for client meeting on Wednesday"
+"Create a weekly study session starting next Monday"
+
+check_calendar examples:
+"What do I have scheduled today?"
+"Show me my appointments this week"
+"Am I free next Tuesday afternoon?"
+"When is my next meeting?"
+"What's on my calendar for Friday?"
+"Do I have any conflicts tomorrow morning?"
+"Display all events for the next 3 days"
+"List my upcoming meetings"
+
+general examples:
+"Hey, how are you"
+"What's the weather today?"
+"Tell me a joke"
+"Who won the last World Cup?"
+"Explain quantum computing"
+"Recommend a good restaurant nearby"
+"How do I reset my password?"
+"What time is it in Tokyo right now?"
+
+Now classify this query:
 "{{ query }}"
 
-Choose one of: create_event, check_calendar
-Return only the label. If it does not fall within either label, call it general
+Return only the label, nothing else.

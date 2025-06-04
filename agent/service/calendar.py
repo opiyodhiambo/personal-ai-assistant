@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from agent.models import EventCreate, UpcomingEventsResponse, EventSummary
 from google.oauth2.credentials import Credentials
@@ -53,8 +53,8 @@ class GoogleCalendar:
         """
         Fetches upcoming events and returns a structured summary.
         """
-        now = datetime.now(datetime.timezone.utc).isoformat()  #  UTC time
-        one_week_later = (now + timedelta(days=7)).isoformat()
+        now = datetime.now(timezone.utc).isoformat()  # UTC time
+        one_week_later = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
 
         events_result = (
             self.service.events()
@@ -66,7 +66,7 @@ class GoogleCalendar:
                 singleEvents=True,
                 orderBy="startTime"
             )
-            .execure()
+            .execute()
         )
         events = events_result.get('items', [])
         event_summaries = []

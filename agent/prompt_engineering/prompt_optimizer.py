@@ -31,6 +31,6 @@ class PromptOptimizer:
             raise FileNotFoundError(f"Template '{template_name}' not found in '{self.env.loader.searchpath}'")
 
         return template.render({
-            "query": user_query.strip(),
-            "context": context.strip() if context else "No relevant context found"
+            "query": user_query,
+            "context": context if context else "No relevant context found"
         })
