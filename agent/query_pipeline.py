@@ -4,7 +4,8 @@ from agent.embedding.embedder import EmbeddingModel
 from agent.models import UserIntent
 from agent.service.intents import IntentDetector
 from agent.prompt_engineering.prompt_optimizer import PromptOptimizer
-from langchain.memory import ConversationSummaryMemory
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
 from langchain.chains.conversation.base import ConversationChain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -43,31 +44,30 @@ class QueryPipeline:
         )
 
 
-    async def run(self, user_query: str):
+    async def run(self, user_query: str, session_id: str):
         """
         Entry point for handling user queries. It detects intent and dispatches accordingly.
         """
-        response = ""
+        print(f"Running query pipeline")
 
         # First, we classify the user intent (create event, check calendar, or general query)
         user_intent = self.intent_detector.classify(user_query)
         
         # Route the query to the appropriate handler based on detected intent
         if user_intent == UserIntent.CREATE_EVENT:
-            return await self._handle_create_event(user_query=user_query)
+            result = await self._handle_create_event(user_query=user_query, user_intent=user_intent, session_id=session_id)
+            yield result
 
         elif user_intent == UserIntent.QUERY_CALENDAR:
-            return await self._handle_calendar_query(user_query=user_query)
+            result = await self._handle_calendar_query(user_query=user_query, user_intent=user_intent, session_id=session_id)
+            yield result
 
         elif user_intent == UserIntent.GENERAL:
-            # For general queries, retrieve context using our embedding model
-            context = self.embedder.retrieve_context(user_query)
-            response += self.call_llm(user_query=user_query, context=context, user_intent=user_intent)
-
-        return response
+            async for chunk in self._handle_general_query(user_query=user_query, user_intent=user_intent, session_id=session_id):
+                yield chunk
 
 
-    async def _handle_create_event(self, user_query: str, stream: bool = False):
+    async def _handle_create_event(self, user_query: str, session_id: str, user_intent: UserIntent):
         """
         Extracts event data from the query and creates a calendar entry.
         If successful, it passes the event back to the LLM for a confirmation message.
@@ -82,55 +82,60 @@ class QueryPipeline:
         added_event = self.calendar.add_event(event_data)
 
         # Let the LLM generate a confirmation or summary
-        return await self.call_llm(user_query, context=added_event, user_intent=UserIntent.CREATE_EVENT, stream=stream)
+        return await self.call_llm(user_query, context=added_event, user_intent=user_intent, session_id=session_id)
 
 
-    async def _handle_calendar_query(self, user_query: str, stream: bool = False):
+    async def _handle_calendar_query(self, user_query: str, session_id: str, user_intent: UserIntent):
         """
         Fetches upcoming events from the calendar and provides them to the LLM for summarization.
         """
         events = self.calendar.get_upcoming_events()
-        return await self.call_llm(user_query, context=events, user_intent=UserIntent.QUERY_CALENDAR, stream=stream)
+        return await self.call_llm(user_query, context=events, user_intent=user_intent, session_id=session_id)
 
 
-    async def _handle_general_query(self, user_query: str, stream: bool = False):
+    async def _handle_general_query(self, user_query: str, session_id: str, user_intent: UserIntent):
         """
         Handles open-ended queries by retrieving contextually similar documents or embeddings.
         """
         context = self.embedder.retrieve_context(user_query)
-        return await self.call_llm(user_query, context=context, user_intent=UserIntent.GENERAL, stream=stream)
+        async for chunk in self.stream_llm(user_query, context=context, user_intent=user_intent, session_id=session_id):
+            yield chunk
 
+        
+    # For normal use (no streaming)
+    async def call_llm(self, user_query: str, context: str, session_id: str, user_intent: UserIntent):
 
-    async def call_llm(self, user_query: str, context: str, session_id: str, user_intent: UserIntent, stream: bool):
         """
         Sends the processed query to the LLM. Memory-aware behavior is handled automatically
         via RunnableWithMessageHistory and ConversationSummaryMemory.
         """
-        # Build an optimized prompt using retrieved context and intent-aware formatting
         optimized_prompt = self.prompt_optimizer.build(user_query, context, user_intent)
-
-        # If streaming is enabled, we yield each response chunk as it arrives.
-        if stream:
-            async for chunk in self.memory_chain.astream(
-                {"input": optimized_prompt},
-                config={"configurable": {"session_id": session_id}}
-            ):
-                yield chunk
-        else:
-            return await self.memory_chain.ainvoke(
-                {"input": optimized_prompt},
-                config={"configurable": {"session_id": session_id}}
-            )
+        response =  await self.memory_chain.ainvoke(
+            {"input": optimized_prompt},
+            config={"configurable": {"session_id": session_id}}
+        )
+        print(f"response {response}")
+        return response.content
 
 
-    def _get_memory(self, session_id: str):
+    # For streaming use cases only
+    async def stream_llm(self, user_query: str, context: str, session_id: str, user_intent: UserIntent):
+        optimized_prompt = self.prompt_optimizer.build(user_query, context, user_intent)
+        print(f"optimized_prompt {optimized_prompt}")
+        async for chunk in self.memory_chain.astream(
+            {"input": optimized_prompt},
+            config={"configurable": {"session_id": session_id}}
+        ):
+            print(f"chunk {chunk}")
+            yield chunk.content
+
+
+
+    def _get_memory(self, session_id: str) -> BaseChatMessageHistory:
         """
         Returns a memory object for the session. If one doesn't exist yet, it creates it.
-        We use ConversationSummaryMemory for summarizing long conversations into context-efficient summaries.
+        We use ChatMessageHistory for summarizing long conversations into context-efficient summaries.
         """
         if session_id not in self.memory_store:
-            self.memory_store[session_id] = ConversationSummaryMemory(
-                llm=self.chat_llm,
-                memory_key="history"
-            )
+            self.memory_store[session_id] = ChatMessageHistory()
         return self.memory_store[session_id]

@@ -1,9 +1,12 @@
+import os
 from jinja2  import Environment, FileSystemLoader, TemplateNotFound
 from agent.models import UserIntent
 
 
 class PromptOptimizer:
-    def __init__(self, template_dir: str = "prompts"):
+    def __init__(self):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_dir = os.path.join(base_dir, "prompts")
         self.env = Environment(loader=FileSystemLoader(template_dir))
         # Mapping of user intents to corresponding template filenames
         self.template_map = {
@@ -28,6 +31,6 @@ class PromptOptimizer:
             raise FileNotFoundError(f"Template '{template_name}' not found in '{self.env.loader.searchpath}'")
 
         return template.render({
-            "user_input": user_query.strip(),
+            "query": user_query.strip(),
             "context": context.strip() if context else "No relevant context found"
         })

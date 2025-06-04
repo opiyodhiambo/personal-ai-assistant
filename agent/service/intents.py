@@ -1,3 +1,4 @@
+import os 
 import json
 from typing import Tuple
 import ollama
@@ -16,22 +17,24 @@ class IntentDetector:
     - Also supports structured event extraction using a Jinja2-driven prompt.
     """
 
-    def __init__(self, threshold: float = 0.7, template_dir: str = "../prompt_engineering/prompts"):
+    def __init__(self, threshold: float = 0.7):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        template_dir = os.path.join(base_dir, "../prompt_engineering/prompts")
         self.threshhold = threshold
         self.jinja_env = Environment(loader=FileSystemLoader(template_dir))
         self.classification_model = "llama3.2"  # Ollama model to use
 
 
     def classify(self, user_query: str) -> UserIntent:
+        
         """
         Classifies the intent of a user query (e.g. create event, check calendar).
         Uses rule-based classification first, then falls back to LLM if confidence is low.
         """
-        intent, confidence = self.__rule_based_classify(user_query)
-
-        if confidence >= self.threshhold:
-            return intent
-        return self._llm_fallback_classify(user_query)
+    
+        intent = self._llm_fallback_classify(user_query)
+        print(f"Handling user_query {user_query} with intent {intent}")
+        return intent
 
 
     def extract_event(self, user_query: str) -> EventCreate:
@@ -45,8 +48,7 @@ class IntentDetector:
         Raises:
             ValueError: if the LLM response is not a valid JSON or can't be parsed.
         """
-        # I'm using a dedicated prompt (`event_extraction_prompt.j2`) for this,
-        # but temporarily re-using the "intent_prompt.j2" is likely a mistake.
+
         prompt_template = self.jinja_env.get_template("event_extraction_prompt.j2")
         prompt = prompt_template.render(query=user_query)
 
@@ -88,7 +90,8 @@ class IntentDetector:
 
         scores = {
             UserIntent.CREATE_EVENT: 0,
-            UserIntent.QUERY_CALENDAR: 0
+            UserIntent.QUERY_CALENDAR: 0,
+            UserIntent.GENERAL: 0
         }
 
         # Simple heuristic: If query contains scheduling-related keywords

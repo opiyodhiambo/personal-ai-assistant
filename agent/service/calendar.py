@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta
 import os
-from agent.models import EventCreate, UpcomingEventsResponse
+from agent.models import EventCreate, UpcomingEventsResponse, EventSummary
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from models import EventCreate, EventSummary
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 class GoogleCalendar:
     def __init__(self):
@@ -24,11 +23,10 @@ class GoogleCalendar:
             # We then save the refresh token for subsequent requests
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
-        self.service = build('calendar', credentials=creds)
+        self.service = build('calendar', 'v3', credentials=creds)
 
 
         
-
     def add_event(self, event_data: EventCreate):
         """
         Adds an event to Google Calendar and returns the event ID or URL.

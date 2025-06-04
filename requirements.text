@@ -9,3 +9,8 @@ langchain-ollama==0.3.3
 Jinja2
 google-api-python-client==2.170.0 
 google-auth-oauthlib==1.2.2 
+fastapi
+starlette
+uvicorn[standard]
+langchain-community==0.3.24
+

@@ -1,19 +1,22 @@
 from uuid import uuid4
 import hashlib
+import os
+from dotenv import load_dotenv
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.vectorstores.atlas import AtlasDB
+from langchain_community.vectorstores.atlas import AtlasDB
 from pymongo import MongoClient
 
+load_dotenv()
 
 class EmbeddingModel:
     def __init__(
         self,    
-        mongo_uri: str = "",
-        db_name: str = "langchain_test_db",
-        collection_name: str = "langchain_test_vectorstores",
-        index_name: str = "langchain-test-index-vectorstores",
+        mongo_uri: str = os.getenv("MONGO-URL"),
+        db_name: str = os.getenv("MONGO-DB"),
+        collection_name: str = os.getenv("MONGO-COLLECTION"),
+        index_name: str = os.getenv("MONGO-INDEX-NAME"),
         embedding_model: str = "nomic-embed-text:v1.5",
         dimensions: int = 768
     ):
@@ -57,10 +60,8 @@ class EmbeddingModel:
                 new_chunks.append(chunk)
                 new_ids.append(str(uuid4()))
 
-
         if new_chunks:
             self.vector_store.add_documents(documents=new_chunks, ids=new_ids)
-
 
 
     def retrieve_context(self, user_query: str, k: int = 5, score_threshold: float = 0.7) -> str:
@@ -77,6 +78,7 @@ class EmbeddingModel:
         """
         try:
             results = self.vector_store.similarity_search_with_score(user_query, k=k)
+            # results = "Something "
 
             # Filter by relevance score if specified
             filtered_context = [
@@ -92,11 +94,13 @@ class EmbeddingModel:
 
     def _ensure_index_exists(self):
         try:
-            self.vector_store.create_vector_search_index(dimensions=self.dimensions) # perfect for our embedding model (nomic-embed-text:v1.5)
+            self.vector_store.create_vector_search_index(dimensions=self.dimensions)
         except Exception as e:
-            # We handle gracefully if index already exists
-            if "already exists" not in str(e):
+            if "already defined" in str(e) or "already exists" in str(e):
+                print("Index already exists — continuing.")
+            else:
                 raise
+
         
     
     def _document_exists(self, doc_hash):
